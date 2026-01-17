@@ -1,26 +1,33 @@
 package com.example.something.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.MappedSuperclass;
 import lombok.Data;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.relational.core.mapping.Column;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 @Data
-@MappedSuperclass
-abstract class BaseEntity {
+public abstract class BaseEntity {
 
-    @Column(name = "created_by", nullable = false, length = 36)
-    private String createdBy = "SYS::character v...g";
+    @CreatedBy
+    @Column("created_by")
+    private String createdBy;
 
-    @Column(name = "modified_by", length = 36)
+    @CreatedDate
+    @Column("created_on")
+    private Instant createdOn;
+
+    @LastModifiedBy
+    @Column("modified_by")
     private String modifiedBy;
 
-    @UpdateTimestamp
-    @Column(name = "modified_on")
-    private ZonedDateTime modifiedOn;
+    @LastModifiedDate
+    @Column("modified_on")
+    private Instant  modifiedOn;
 
-    @Column(name = "transaction_id", length = 100)
+    @Column("transaction_id")
     private String transactionId;
 }

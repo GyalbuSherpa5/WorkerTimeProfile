@@ -1,7 +1,7 @@
 package com.example.something.controller;
 
 import com.example.something.resource.WorkerTimeProfileWrapper;
-import com.example.something.service.WorkTimeProfileService;
+import com.example.something.service.WorkerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,26 +12,22 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class WorkerTimeProfileController {
 
-    public final WorkTimeProfileService workTimeProfileService;
+    public final WorkerService workerService;
 
     @GetMapping
-    public WorkerTimeProfileWrapper getWorkerTimeProfile(
-            @RequestHeader("org_id") String orgId,
-            @RequestHeader("associate_id") String associateId,
-            @RequestParam(name="first_name", required = false) String firstName,
-            @RequestParam(name="last_name", required = false) String lastName,
-            @RequestParam(name="group_id", required = false) UUID groupId,
-            @RequestParam(name="must_include_group", required = false) boolean mustIncludeGroup,
+    public WorkerTimeProfileWrapper getWorkers(
+            @RequestParam String orgId,
+            @RequestParam UUID terminalGroupId,
+            @RequestParam(required = false) String givenName,
+            @RequestParam(required = false) String familyName,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        return workTimeProfileService.getWorkTimeProfile(associateId,
-                orgId,
-                firstName,
-                lastName,
-                groupId,
-                mustIncludeGroup,
-                page,
-                size);
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "true") boolean includeInGroup,
+            @RequestParam(defaultValue = "true") boolean isPrimaryAssignment
+            ) {
+
+        return workerService.getWorkersByTerminalGroup(
+                orgId, terminalGroupId, givenName, familyName, page, size, includeInGroup, isPrimaryAssignment
+        );
     }
 }

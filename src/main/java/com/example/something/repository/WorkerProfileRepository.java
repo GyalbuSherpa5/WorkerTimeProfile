@@ -1,46 +1,54 @@
 package com.example.something.repository;
 
 import com.example.something.model.WorkerProfile;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jdbc.repository.query.Query;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface WorkerProfileRepository extends JpaRepository<WorkerProfile, WorkerProfile.WorkerProfilePK> {
+public interface WorkerProfileRepository extends CrudRepository<WorkerProfile, UUID> {
 
-    @Query(value = "SELECT DISTINCT wp.* FROM wfm_worker_profile wp " +
-            "LEFT JOIN wfm_worker_assignment_time_profile watp ON watp.worker_profile_id = wp.worker_profile_id " +
-            "LEFT JOIN wfm_terminalgroup_worker_assignment tgwa ON tgwa.worker_id = wp.worker_profile_id " +
-            "WHERE wp.organization_oid = :orgId " +
-            "AND wp.associate_oid = :associateId " +
-            "AND (CAST(:firstName AS TEXT) IS NULL OR LOWER(CAST(wp.given_name AS TEXT)) LIKE LOWER(CONCAT('%', :firstName, '%'))) " +
-            "AND (CAST(:lastName AS TEXT) IS NULL OR LOWER(CAST(wp.family_name AS TEXT)) LIKE LOWER(CONCAT('%', :lastName, '%'))) " +
-            "AND (:groupId IS NULL OR " +
-            "     (:mustInclude = TRUE AND tgwa.terminalgroup_id = :groupId) OR " +
-            "     (:mustInclude = FALSE AND (tgwa.terminalgroup_id IS NULL OR tgwa.terminalgroup_id != :groupId)))",
-            countQuery = "SELECT COUNT(DISTINCT wp.worker_profile_id) FROM wfm_worker_profile wp " +
-                    "LEFT JOIN wfm_worker_assignment_time_profile watp ON watp.worker_profile_id = wp.worker_profile_id " +
-                    "LEFT JOIN wfm_terminalgroup_worker_assignment tgwa ON tgwa.worker_id = wp.worker_profile_id " +
-                    "WHERE wp.organization_oid = :orgId " +
-                    "AND wp.associate_oid = :associateId " +
-                    "AND (CAST(:firstName AS TEXT) IS NULL OR LOWER(CAST(wp.given_name AS TEXT)) LIKE LOWER(CONCAT('%', :firstName, '%'))) " +
-                    "AND (CAST(:lastName AS TEXT) IS NULL OR LOWER(CAST(wp.family_name AS TEXT)) LIKE LOWER(CONCAT('%', :lastName, '%'))) " +
-                    "AND (:groupId IS NULL OR " +
-                    "     (:mustInclude = TRUE AND tgwa.terminalgroup_id = :groupId) OR " +
-                    "     (:mustInclude = FALSE AND (tgwa.terminalgroup_id IS NULL OR tgwa.terminalgroup_id != :groupId)))",
-            nativeQuery = true)
-    Page<WorkerProfile> findWorkerProfiles(
+    @Query("""
+            SELECT DISTINCT wp.*
+            FROM wfm_worker_profile wp
+            INNER JOIN wfm_terminalgroup_worker_assignment tgwa 
+                ON wp.worker_id = tgwa.worker_id
+            WHERE wp.organization_oid = :orgId
+                AND tgwa.terminalgroup_id = :terminalGroupId
+                AND (:givenName IS NULL OR wp.given_name ILIKE CONCAT('%', :givenName, '%'))
+                AND (:familyName IS NULL OR wp.family_name ILIKE CONCAT('%', :familyName, '%'))
+            ORDER BY wp.given_name, wp.family_name
+            """)
+    List<WorkerProfile> findWorkersByTerminalGroup(
             @Param("orgId") String orgId,
-            @Param("associateId") String associateId,
-            @Param("firstName") String firstName,
-            @Param("lastName") String lastName,
-            @Param("groupId") UUID groupId,
-            @Param("mustInclude") Boolean mustInclude,
-            Pageable pageable
+            @Param("terminalGroupId") UUID terminalGroupId,
+            @Param("givenName") String givenName,
+            @Param("familyName") String familyName
+    );
+
+    // Find workers NOT in terminal group (NOT EQUALS TO)
+    @Query("""
+            SELECT DISTINCT wp.*
+            FROM wfm_worker_profile wp
+            WHERE wp.organization_oid = :orgId
+                AND wp.worker_id NOT IN (
+                    SELECT worker_id 
+                    FROM wfm_terminalgroup_worker_assignment 
+                    WHERE terminalgroup_id = :terminalGroupId
+                )
+                AND (:givenName IS NULL OR wp.given_name ILIKE CONCAT('%', :givenName, '%'))
+                AND (:familyName IS NULL OR wp.family_name ILIKE CONCAT('%', :familyName, '%'))
+            ORDER BY wp.given_name, wp.family_name
+            """)
+    List<WorkerProfile> findWorkersNotInTerminalGroup(
+            @Param("orgId") String orgId,
+            @Param("terminalGroupId") UUID terminalGroupId,
+            @Param("givenName") String givenName,
+            @Param("familyName") String familyName
     );
 }
+
